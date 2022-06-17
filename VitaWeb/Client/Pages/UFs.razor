@@ -1,0 +1,290 @@
+﻿@page "/ufs"
+@inject IUFStoresService<UF> ufStoresService
+@inject IUFStoresService<UFCreate> ufStoresServiceHandler
+@inject IAuthenticationService authenticationService
+@inject ILocalStorageService localStorageService
+@inject IJSRuntime JSRuntime
+@implements IDisposable
+
+<div class="col-12">
+    <h3><b>Cadastro de UFs</b></h3>
+    <hr />
+    <br />
+
+    <EditForm Model="@uf" OnValidSubmit="@SaveUF">
+        <DataAnnotationsValidator />
+
+        <div class="col-12">
+            <input @ref="siglaTextBox" class="form-control col-3" @bind="uf.Id" placeholder="Sigla da UF" />
+            &nbsp;<ValidationMessage For="@(() => uf.Id)" />
+        </div>
+        <div class="col-12">
+            <InputText class="form-control col-3" @bind-Value="uf.Nom" placeholder="Nome da UF" />
+            &nbsp;<ValidationMessage For="@(() => uf.Nom)" />
+        </div>
+        <div class="col-12">
+            <InputText class="form-control col-3" @bind-Value="uf.Reg" placeholder="Região da UF" />
+            &nbsp;<ValidationMessage For="@(() => uf.Reg)" />
+        </div>
+        <div class="col-6">
+            <input type="submit" class="form-control col-1 btn btn-primary" style="width: 120px; margin-right: 5px" value="Salvar" />
+            <input type="reset" class="form-control col-1 btn btn-secondary" style="width: 120px" value="Limpar" />
+        </div>
+    </EditForm>
+</div>
+<br />
+
+<div class="col-12" style="text-align:left; font-weight:bold">
+    <span class="col-12" style="color:black">@UFCreatedMessage</span>
+</div>
+
+<div class="col-12" style="text-align:left; font-weight:bold">
+    <span class="col-12" style="color:RED">@UFErrorMessage</span>
+</div>
+
+<hr class="solid">
+
+<button class="btn btn-secondary" style="width: 120px;" @onclick="LimparFiltros">Limpar filtros</button>
+
+<div class="col-12">
+
+    <SpinLoader IsLoading="isLoading">
+        <LoadingTemplate>
+            <div class="col-12" style="background-color: lightgray; height:400px; vertical-align:middle">
+                <br /><br />
+                <Chase Center="true" Color="#c21f13" Size="70px"></Chase>
+            </div>
+        </LoadingTemplate>
+        <ContentTemplate>
+            @if (filteredUFList != null)
+            {
+                <GridView Items="filteredUFList" ReloadList="IsGridViewFiltered">
+                    <GridColumns>
+                        <GridColumn ColumnTitle="UF"
+                                    OnSearchTextChanged="@(e => OnUFSearchTextChanged(e, "UF"))"></GridColumn>
+                        <GridColumn ColumnTitle="Nome"
+                                    OnSearchTextChanged="@(e => OnUFSearchTextChanged(e, "Nome"))"></GridColumn>
+                        <GridColumn ColumnTitle="Região"
+                                    OnSearchTextChanged="@(e => OnUFSearchTextChanged(e, "Regiao"))"></GridColumn>
+                    </GridColumns>
+                    <GridRow Context="uf">
+                        <td>@uf.Id</td>
+                        <td>@uf.Nom</td>
+                        <td>@uf.Reg</td>
+                    </GridRow>
+                </GridView>
+            }
+                    
+        </ContentTemplate>
+    </SpinLoader>
+</div>
+
+@code {
+
+    public string UFCreatedMessage { get; set; }
+    public string UFErrorMessage { get; set; }
+
+    public string filteredUfId { get; set; }
+    public string filteredNome { get; set; }
+    public string filteredRegiao { get; set; }
+
+    public UF uf { get; set; }
+    public List<UF> ufList { get; set; }
+    public List<UF> filteredUFList { get; set; }
+
+    public bool Result { get; set; }
+    public bool IsGridViewFiltered { get; set; }
+    bool isLoading = true;
+
+    ElementReference siglaTextBox;
+
+    private async Task LimparFiltros()
+    {
+        UFCreatedMessage = string.Empty;
+        await LoadUFs();
+        await JSRuntime.InvokeVoidAsync("clearFilters");
+    }
+
+    protected override void OnInitialized()
+    {
+        Console.WriteLine("UFs - OnInitialized");
+        base.OnInitialized();
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        Console.WriteLine("UFs - OnInitializedAsync");
+
+        uf = new UF();
+        ufList = new List<UF>();
+
+        filteredUfId = string.Empty;
+        filteredNome = string.Empty;
+        filteredRegiao = string.Empty;
+        UFCreatedMessage = string.Empty;
+        UFErrorMessage = string.Empty;
+
+        await base.OnInitializedAsync();
+    }
+
+    protected override void OnParametersSet()
+    {
+        Console.WriteLine("UFs - OnParametersSet");
+        base.OnParametersSet();
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        Console.WriteLine("UFs - OnParametersSetAsync");
+        await base.OnParametersSetAsync();
+    }
+
+    protected override bool ShouldRender()
+    {
+        base.ShouldRender();
+        Console.WriteLine("UFs - ShouldRender");
+
+        return true;
+    }
+
+    protected override void OnAfterRender(bool firstRender)
+    {
+        Console.WriteLine("UFs - OnAfterRender - firstRender = " + firstRender);
+        base.OnAfterRender(firstRender);
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        Console.WriteLine("UFs - OnAfterRenderAsync - firstRender = " + firstRender);
+
+        if (firstRender)
+        {
+            await LoadUFs();
+
+            isLoading = false;
+            StateHasChanged();
+        }
+
+        await base.OnAfterRenderAsync(firstRender);
+    }
+
+    public void Dispose()
+    {
+        Console.WriteLine("UFs - Dispose");
+    }
+
+    private async Task LoadUFs()
+    {
+        await Task.Delay(500);
+
+        ufList = filteredUFList = await ufStoresService.GetAllAsync();
+
+        if (ufList == null)
+        {
+            var usuarioAutenticado = new UsuarioAutenticadoResponse();
+            usuarioAutenticado.Token = await localStorageService.GetItemAsync<string>("accessToken");
+            usuarioAutenticado.RefreshToken = await localStorageService.GetItemAsync<string>("refreshToken");
+
+            var usuarioAutenticadoNovo = await authenticationService.RefreshTokenAsync(usuarioAutenticado);
+            await localStorageService.SetItemAsync("accessToken", usuarioAutenticadoNovo.Token);
+
+            ufList = filteredUFList = await ufStoresService.GetAllAsync();
+        }
+
+        StateHasChanged();
+    }
+
+    private async Task SaveUF()
+    {
+        UFCreatedMessage = string.Empty;
+        UFErrorMessage = string.Empty;
+
+        var ufExistente = await ufStoresService.GetByIdAsync(uf.Id);
+        var ufCriadaAlterada = new UFCreate
+        {
+            Id = uf.Id,
+            Nome = uf.Nom,
+            Regiao = uf.Reg
+        };
+
+        try
+        {
+            ResponseBase response;
+
+            if (ufExistente == null || ufExistente.Id == null)
+                response = await ufStoresServiceHandler.SaveAsync(ufCriadaAlterada);
+            else
+                response = await ufStoresServiceHandler.UpdateAsync(ufCriadaAlterada);
+
+            if (response.StatusCode != HttpStatusCode.OK)
+            {
+                UFErrorMessage = response.Message;
+                Console.WriteLine(response.Message);
+
+                return;
+            }
+
+            await LoadUFs();
+            Result = true;
+
+            uf = new UF();
+            UFCreatedMessage = "UF criada com sucesso!";
+
+            await JSRuntime.InvokeVoidAsync("setFocusOnElement", siglaTextBox);
+        }
+        catch (Exception e)
+        {
+            UFErrorMessage = e.Message;
+            Result = false;
+            Console.WriteLine(e);
+        }
+    }
+
+    private async Task DeleteUF(string Id)
+    {
+        UFCreatedMessage = string.Empty;
+
+        await ufStoresService.DeleteAsync(Id);
+        await LoadUFs();
+    }
+
+    private void EditUF(UF argUF)
+    {
+        UFCreatedMessage = string.Empty;
+        uf = argUF;
+    }
+
+    private void OnUFSearchTextChanged(ChangeEventArgs changeEventArgs, string columnTitle)
+    {
+        UFCreatedMessage = string.Empty;
+
+        string searchText = changeEventArgs.Value.ToString();
+        IsGridViewFiltered = true;
+
+        switch (columnTitle)
+        {
+            case "UF":
+                filteredUfId = searchText.ToLower();
+                break;
+            case "Nome":
+                filteredNome = searchText.ToLower();
+                break;
+            case "Regiao":
+                filteredRegiao = searchText.ToLower();
+                break;
+            default:
+                JSRuntime.InvokeVoidAsync("alert", $"coluna {columnTitle} pesquisada não existe no sistema.").GetAwaiter().GetResult();
+                break;
+        }
+
+        filteredUFList = ufList.Where(uf =>
+            (!string.IsNullOrWhiteSpace(filteredUfId) ?
+                uf.Id.ToLower().Contains(filteredUfId) : true) &&
+
+            (!string.IsNullOrWhiteSpace(filteredNome) ?
+                uf.Nom.ToLower().Contains(filteredNome) : true) &&
+
+            (!string.IsNullOrWhiteSpace(filteredRegiao) ?
+                uf.Reg.ToLower().Contains(filteredRegiao) : true)).ToList();
+    }
+}

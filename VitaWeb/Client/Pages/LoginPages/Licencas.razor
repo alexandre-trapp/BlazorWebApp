@@ -1,0 +1,78 @@
+﻿@page "/licencas"
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject NavigationManager NavigationManager
+@inject Blazored.LocalStorage.ILocalStorageService localStorageService
+@inject IAuthenticationService userService
+
+<EditForm Model="@usuario" OnValidSubmit="@ValidateUser">
+    <DataAnnotationsValidator />
+    
+    <div>
+        <br /><br /><br />
+    </div>
+    <div class="col-12 row">
+        <input class="form-control col-12" @bind="usuario.Email" placeholder="E-mail" />
+        &nbsp;<ValidationMessage For="@(() => usuario.Email)" />
+    </div>
+    <br />
+    <div class="col-12 row">
+        <input type="password" class="form-control col-12" @bind="usuario.Password" placeholder="Senha" />
+        &nbsp;<ValidationMessage For="@(() => usuario.Password)" />
+    </div>
+    <br />
+    <div class="col-12 row">
+        <span class="col-12"></span>
+        <input type="submit" style="width: 120px" class="form-control col-6 btn btn-primary" value="Entrar" />
+        <a href="/registrar" class="col-6" style="align-self: center">Criar novo usuário</a>
+    </div>
+    <br />
+    <div class="col-12 row" style="text-align:left; font-weight:bold">
+        <span class="col-12" style="color:red">@LoginMessage</span>
+    </div>
+</EditForm>
+
+@code {
+
+    private UsuarioAuthRequest usuario;
+    public string LoginMessage { get; set; }
+    ClaimsPrincipal claimsPrincipal;
+
+    [CascadingParameter]
+    private Task<AuthenticationState> authenticationStateTask { get; set; }
+
+    protected async override Task OnInitializedAsync()
+    {
+        usuario = new UsuarioAuthRequest();
+
+        claimsPrincipal = (await authenticationStateTask).User;
+
+        if (claimsPrincipal.Identity.IsAuthenticated) 
+            NavigationManager.NavigateTo("/");
+    }
+
+    private async Task<bool> ValidateUser()
+    {
+        if (string.IsNullOrWhiteSpace(usuario.Email) || string.IsNullOrWhiteSpace(usuario.Password))
+        {
+            LoginMessage = "E-mail e/ou senha não informados.";
+            return await Task.FromResult(false);
+        }
+
+        var usuarioAutenticado = await userService.LoginAsync(usuario);
+
+        if (usuarioAutenticado.StatusCode != HttpStatusCode.OK)
+        {
+            LoginMessage = usuarioAutenticado.Message;
+            return await Task.FromResult(false);
+        }
+
+        if (!string.IsNullOrWhiteSpace(usuarioAutenticado.Email) && !string.IsNullOrWhiteSpace(usuarioAutenticado.Token))
+        {
+            await ((CustomAuthenticationStateProvider)AuthenticationStateProvider).MarkUserAsAuthenticated(usuarioAutenticado);
+            NavigationManager.NavigateTo("/");
+        }
+
+        LoginMessage = "Usuário e/ou senha inválidos.";
+        return await Task.FromResult(false);
+    }
+}

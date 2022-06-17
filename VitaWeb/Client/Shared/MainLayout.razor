@@ -1,0 +1,40 @@
+﻿@inherits LayoutComponentBase
+@inject NavigationManager NavigationManager
+@inject AuthenticationStateProvider AuthenticationStateProvider
+
+<div class="page">
+    <div class="sidebar">
+        <NavMenu />
+    </div>
+
+    <main>
+        <div class="top-row px-4" style="position: relative;">      
+            <AuthorizeView>
+                <Authorized>
+                    <a href="/" @onclick="(() => Logoff())">Logoff</a>
+                    <a href="/acessoInicial">Acesso ao VitaWeb</a>
+                    <a href="/licencas">Escolher licença</a>
+                </Authorized>
+                <NotAuthorized>
+                    <a href="/login">Login</a>
+                    
+                </NotAuthorized>
+            </AuthorizeView>
+        
+        
+            <a href="javascript:void(0);" onclick="alert('VitaWeb v1.0.0 - 8 de abril de 2022 \r\nMFK Software © - Todos os direitos reservados.')">Sobre</a>
+        </div>
+
+        <article class="content px-4">
+            @Body
+        </article>
+    </main>
+</div>
+
+@code{
+    public async Task Logoff()
+    {
+        await ((CustomAuthenticationStateProvider)AuthenticationStateProvider).MarkUserAsLoggedOut();
+        NavigationManager.NavigateTo("login");
+    }
+}

@@ -1,0 +1,55 @@
+﻿@page "/acessoInicial"
+@inject NavigationManager NavigationManager
+@inject ILicencasService licencasService
+
+<EditForm Model="@usuario" OnValidSubmit="@ValidateUser">
+    <DataAnnotationsValidator />
+
+    <div>
+        <br /><br /><br />
+    </div>
+    <div class="col-12 row">
+        <input class="form-control col-6" @bind="usuario.Email" placeholder="E-mail" />
+        &nbsp;<ValidationMessage For="@(() => usuario.Email)" />
+        <input type="submit" style="width: 80px; margin-top: 10px;" class="form-control col-2 btn btn-primary" value="Acessar" />
+    </div>
+    <br />
+    <br />
+    <div class="col-12 row">
+        <a href="/registrar" class="btn btn-secondary" style="align-self: center">Clique aqui para criar um novo VitaWeb para meu CNPJ/CPF</a>
+    </div>
+    <div class="col-12 row" style="text-align:left; font-weight:bold">
+        <span class="col-12" style="color:red">@LoginMessage</span>
+    </div>
+</EditForm>
+
+@code {
+
+    private UsuarioEmailRequest usuario;
+    public string? LoginMessage { get; set; }
+
+    protected async override Task OnInitializedAsync()
+    {
+        usuario = new UsuarioEmailRequest();
+    }
+
+    private async Task<bool> ValidateUser()
+    {
+        if (string.IsNullOrWhiteSpace(usuario.Email))
+        {
+            LoginMessage = "E-mail não informado.";
+            return await Task.FromResult(false);
+        }
+
+        var response = await licencasService.ExistsLicencesByEmailAsync(usuario.Email);
+
+        if (response.StatusCode != HttpStatusCode.OK)
+        {
+            LoginMessage = response.Message + ", corrija o email ou clique em criar um novo VitaWeb para seu CPNJ/CPF.";
+            return await Task.FromResult(false);
+        }
+
+        NavigationManager.NavigateTo($"/licencas?email={usuario.Email}");
+        return await Task.FromResult(true);
+    }
+}

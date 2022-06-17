@@ -1,0 +1,83 @@
+﻿@page  "/registrar"
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject NavigationManager NavigationManager
+@inject Blazored.LocalStorage.ILocalStorageService localStorageService
+@inject IAuthenticationService userService
+
+    <EditForm Model="@usuario" OnValidSubmit="@RegisterUser">
+        <DataAnnotationsValidator />
+        <div>
+            <br /><br /><br /><br /><br />
+        </div>
+        <div>
+            <h3 style="font-weight:bold; color:purple">Novo usuário</h3>
+        </div>
+        <div>
+            <br />
+        </div>
+        <div class="col-12 row">
+            <input class="form-control col-12" @bind="usuario.Id" placeholder="Id do usuário" />
+            &nbsp;<ValidationMessage For="@(() => usuario.Id)" />
+        </div>
+        <div class="col-12 row">
+            <input class="form-control col-12" @bind="usuario.Email" placeholder="E-mail" />
+            &nbsp;<ValidationMessage For="@(() => usuario.Email)" />
+        </div>
+        <div class="col-12 row">
+            <input type="password" class="form-control col-12" @bind="usuario.Password" placeholder="Senha" />
+            &nbsp;<ValidationMessage For="@(() => usuario.Password)" />
+        </div>
+        <div class="col-12 row">
+            <input type="password" class="form-control col-12" @bind="usuario.ConfirmPassword" placeholder="Confirmar senha" />
+            &nbsp;<ValidationMessage For="@(() => usuario.ConfirmPassword)" />
+        </div>
+        <div class="col-12 row">
+            <span class="col-12"></span>
+            <input type="submit" class="form-control col-6 btn btn-primary" style="width: 120px" value="Registrar" />
+            <a href="/" class="col-6" style="align-self: center; width: 200px">Já possui um usuário?</a>
+        </div>
+        <br />
+        <div class="col-12 row" style="text-align:left; font-weight:bold">
+            <span class="col-12" style="color:red">@LoginMessage</span>
+        </div>
+    </EditForm>
+
+@code {
+
+    private Usuario usuario;
+    public string LoginMessage { get; set; }
+
+    protected override Task OnInitializedAsync()
+    {
+        usuario = new Usuario();
+        return base.OnInitializedAsync();
+    }
+
+    private async Task<bool> RegisterUser()
+    {
+        if (string.IsNullOrWhiteSpace(usuario.Email) || string.IsNullOrWhiteSpace(usuario.Password))
+        {
+            LoginMessage = "E-mail e/ou senha não informados.";
+            return await Task.FromResult(false);
+        }
+
+        var usuarioCriado = await userService.RegisterUserAsync(usuario);
+
+        if (usuarioCriado.StatusCode != HttpStatusCode.OK)
+        {
+            LoginMessage = usuarioCriado.Message;
+            return await Task.FromResult(false);
+        }
+
+        if (!string.IsNullOrWhiteSpace(usuarioCriado.Email) && !string.IsNullOrWhiteSpace(usuarioCriado.Token))
+        {
+            await ((CustomAuthenticationStateProvider)AuthenticationStateProvider).MarkUserAsAuthenticated(usuarioCriado);
+            NavigationManager.NavigateTo("/");
+
+            return await Task.FromResult(true);
+        }
+
+        LoginMessage = "Usuário e/ou senha inválidos";
+        return await Task.FromResult(false);
+    }
+}

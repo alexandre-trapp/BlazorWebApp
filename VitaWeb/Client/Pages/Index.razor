@@ -1,0 +1,35 @@
+﻿@page "/"
+@inject NavigationManager navigationManager
+@inject ILocalStorageService localStorageService
+@inject IAuthorizationService authorizationService
+
+<PageTitle>VitaWeb</PageTitle>
+
+@if (IsUserAuthenticated)
+{
+    <h3><b>@user.Identity.Name</b> logado com sucesso!</h3>
+    <br />
+}
+else
+{
+    <h3><b>Direcionando para tela de login.</b></h3>
+}
+
+@code {
+
+    [CascadingParameter]
+    private Task<AuthenticationState> authenticationStateTask { get; set; }
+    ClaimsPrincipal user;
+
+    bool IsUserAuthenticated;
+
+    protected override async Task OnInitializedAsync()
+    {
+        user = (await authenticationStateTask).User;
+
+        if (user.Identity.IsAuthenticated)
+            IsUserAuthenticated = true;
+        else
+            navigationManager.NavigateTo("/acessoInicial");
+    }
+}
